@@ -1,7 +1,4 @@
-from datetime import datetime
 import scrapy
-from scrapy.http import FormRequest, Request
-from scrapy.utils.response import open_in_browser
 import os
 from json import dump
 
@@ -10,7 +7,7 @@ from json import dump
 class Scraper(scrapy.Spider):
 
     name = 'hybrid'
-    directory = r'C:\Users\xemme\magi\courses_webpages'
+    directory = r'C:\Users\Emmett\magi-spiders\courses_webpages'
 
     start_urls = []
     for filename in os.listdir(directory):
@@ -98,6 +95,6 @@ class Scraper(scrapy.Spider):
         return timetable
 
     def closed(self, response):
-        with open(r'C:\Users\xemme\magi\webapp\backend\databases\ul_course_timetables.json', 'w+', encoding='utf-8') as db:
+        with open(r'ul_course_timetables.json', 'w+', encoding='utf-8') as db:
             dump(self.UL, db)
             
