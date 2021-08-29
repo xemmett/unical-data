@@ -30,8 +30,7 @@ class BookSpider(scrapy.Spider):
                 yield FormRequest.from_response(response, formdata={'ctl00$MasterContentPlaceHolder$ModuleDropDown': module_code, 'ctl00$MasterContentPlaceHolder$SubmitQuery.x': '4', 'ctl00$MasterContentPlaceHolder$SubmitQuery.y': '11'}, meta={'module':module_code}, callback=self.module_details)
             else:
                 print('DUPLICATE:', current_module)
-            
-            current_module+=1
+                current_module+=1
     
     def module_details(self, response):
         # open_in_browser(response)
@@ -153,5 +152,5 @@ class BookSpider(scrapy.Spider):
 
     def closed(self, response):
 
-        with open('C:/Users/xemme/Documents/Python Scripts/timetable_scraper/webapp/backend/databases/ul_module_details.json', 'w+', encoding="utf-8") as of:
+        with open(r'C:\Users\Emmett\magi-spiders\data\ul_module_details.json', 'w+', encoding="utf-8") as of:
             dump(self.book_of_modules, of)

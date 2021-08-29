@@ -12,7 +12,7 @@ driver.find_element_by_xpath(course_timetable).click()
 ul_courses = {}
 num_of_courses = 0
 num_of_years = 0
-for i in range(2, 216):
+for i in range(2, 216): # <- check this!!
     num_of_courses+=1
     course_chooser = '//*[@id="select2-HeaderContent_CourseDropdown-container"]'
     try:

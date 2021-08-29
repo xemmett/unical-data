@@ -15,30 +15,32 @@ class BookSpider(scrapy.Spider):
     libgen_found_books = []
     
     def parse(self, response):
-        with open(r'C:\Users\xemme\Documents\Python Scripts\timetable_scraper\webapp\backend\databases\ul_module_details.json', 'r', encoding="utf-8") as modules:
+
+        with open(r'C:\Users\Emmett\magi-spiders\data\ul_module_details.json', 'r', encoding="utf-8") as modules:
             module_details = load(modules)
-            for module in module_details:
-                dsk_query = ''
+            
+        for module in module_details:
+            dsk_query = ''
 
-                for book in module['books']:
-                    # ~~ temporary fix for edition, bookofmodules.py failed to see editions in brackets e.g "(8th edition)"
-                    # code is from bookofmodules.py so is fixed for next semester
-                    
-                    book['title'] = book['title'].replace('(', '').replace(')', '').replace("\\n", "").replace("\\", "")
-                    book['edition'] = ''.join([word for word in book['title'].split(" ") if ('th' in word or 'rd' in word) and word[0] in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']])
-                    #~~~~ end of bug fix
-
-                    book['module_code'] = module['module_code']
-                    book['search_string'] = book['title']
-
-                    if(book['edition'] != ''):
-                        search_string = book['title'].split(book['edition'])[0]
-                        book['search_string'] = search_string
-
-                    dsk_query += book['search_string']+'\r\n'
+            for book in module['books']:
+                # ~~ temporary fix for edition, bookofmodules.py failed to see editions in brackets e.g "(8th edition)"
+                # code is from bookofmodules.py so is fixed for next semester
                 
-                print(dsk_query)
-                yield FormRequest('http://libgen.rs/batchsearchindex.php', meta={'books': module['books']}, formdata={'dsk': dsk_query}, callback=self.results_per_book)
+                book['title'] = book['title'].replace('(', '').replace(')', '').replace("\\n", "").replace("\\", "")
+                book['edition'] = ''.join([word for word in book['title'].split(" ") if ('th' in word or 'rd' in word) and word[0] in ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']])
+                #~~~~ end of bug fix
+
+                book['module_code'] = module['module_code']
+                book['search_string'] = book['title']
+
+                if(book['edition'] != ''):
+                    search_string = book['title'].split(book['edition'])[0]
+                    book['search_string'] = search_string
+                    
+                dsk_query += book['search_string']+'\r\n'
+            
+            print(dsk_query)
+            yield FormRequest('http://libgen.rs/batchsearchindex.php', meta={'books': module['books']}, formdata={'dsk': dsk_query}, callback=self.results_per_book)
 
     def results_per_book(self, response):
 
@@ -163,7 +165,7 @@ class BookSpider(scrapy.Spider):
 
     def closed(self, response):
 
-        with open(r'C:\Users\xemme\Documents\Python Scripts\timetable_scraper\webapp\backend\databases\libgen_books.json', 'w+', encoding='utf-8') as output:
+        with open(r'C:\Users\Emmett\magi-spiders\data\libgen_books.json', 'w+', encoding='utf-8') as output:
             records = self.libgen_found_books
             dump(records, output)
 
