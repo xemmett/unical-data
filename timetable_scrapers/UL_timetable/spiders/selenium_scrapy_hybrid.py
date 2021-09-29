@@ -1,18 +1,20 @@
 import scrapy
 import os
 from json import dump
-
+from time import strptime, sleep
 
 
 class Scraper(scrapy.Spider):
 
     name = 'hybrid'
-    directory = r'C:\Users\Emmett\magi-spiders\courses_webpages'
+    directory = r'C:\Users\Emmett\magi-spiders\timetable_scrapers\course_webpages_2021'
 
     start_urls = []
     for filename in os.listdir(directory):
         if filename.endswith(".html"):
             start_urls.append('file:///'+directory+'/'+filename)
+        
+    start_urls = list(set(start_urls))
 
     UL = []
     def parse(self, response):
@@ -25,76 +27,117 @@ class Scraper(scrapy.Spider):
         timetable['course_year'] = response.xpath('//*[@id="select2-HeaderContent_CourseYearDropdown-container"]/text()').get()
         timetable['class'] = []
         # open_in_browser(response)
-        table = response.css('#MainContent_CourseTimetableGridView') # ~~~~~~~~~ Point the bot the table grid 
-        days = [0, 1, 2, 3, 4, 5]
-        for l in table:
-            my_classes = l.css('td ::text').extract() #~~~~~ Use the table selector object to shortent the css path / xpath
-            day_counter = 0
-            skip = []
-            
-            for i in range(len(my_classes)-1):
+        rows = response.xpath('/html/body/form/div[5]/div/div/table/tbody/*') # ~~~~~~~~~ Point the bot the table grid 
 
-                if(my_classes[i] != ' '):
-                    
-                    try:
-                        day = days[day_counter]
-                    except IndexError as e:
-                        day_counter = 0
-                        day = days[day_counter]
-
-                    if(my_classes[i] != '\xa0' and i not in skip):
-
-                        skip = []
-                        new_class = {
-                            'day': 0,
-                            'professor': 'Null',
-                            'module': 'Null',
-                            'group': 'Null',
-                            'delivery': 'Null',
-                            'location': 'Null',
-                            'active_weeks': [],
-                            'start_time': '00:00',
-                            'end_time': '00:00'
-                        }
-                        times_list = my_classes[i].split(' - ')
-                        module_list = my_classes[i+1].split(' - ')
-                        new_class['day'] = day
-                        new_class['module'] = module_list[0]
-                        new_class['delivery'] = module_list[1]
-
-                        try:   
-                            new_class['group'] = module_list[2]
-                        except IndexError as ie:
-                            pass
-
-                        new_class['delivery'] = module_list[1]
-                        new_class['start_time'] = times_list[0]
-                        new_class['end_time'] = times_list[1]
-                        new_class['professor'] = (my_classes[i+2])[1:]
-
-                        if('campus' not in my_classes[i+5]):
-                            new_class['location'] = 'Online'
-                            new_class['active_weeks'] = (my_classes[i+3]).replace('Wks:', '').split(',')
-                            skip = [i+1, i+2, i+3, i+4]
-                        else:
-                            new_class['location'] = my_classes[i+3]
-                            new_class['active_weeks'] = (my_classes[i+4]).replace('Wks:', '').split(',')
-                            skip = [i+1, i+2, i+3, i+4, i+5]
+        for row in rows[1:]:
+            cells = row.xpath('td') #~~~~~ Use the table selector object to shortent the css path / xpath
+            #
+        #
+            day = 0
+            for cell in cells:
+                data = cell.xpath('text()').getall()
+                # ['09:00 - 11:00', 'EE4216 - LAB - 2B', ' HAYES (ECE) MARTIN DR', 'Wks:4,8,13']
+                for c in data:
+                    if(c == ' '):
+                        data.remove(c)
+                    elif(c==r'\xa0'):
+                        break
+        #
+                if(data == []):
+                    continue
+        #
+                print("data: ", data)
+                start_index = 0
+                for d in data:
+                    start_index += 1
+                    if(TimeCheck(d)):
+                        subdata = [d]
+                        for elem in data[start_index:]:
+                            print('elem: ', elem)
+                            if(TimeCheck(elem)):
+                                break
+                            else:
+                                subdata.append(elem)
                         
-                        print(new_class)
-                        
+                        print("subdata: ", subdata)
+                        new_class = ProcessClassData(subdata, day)
+                        print('processed: ', new_class)
                         timetable['class'].append(new_class)
-                        day_counter+=1
-
-                    elif(i not in skip):
-                        day_counter+=1
-                else:
-                    day_counter -= 1
         
+                day+=1
+            
         self.UL.append(timetable)
         return timetable
 
     def closed(self, response):
-        with open(r'ul_course_timetables.json', 'w+', encoding='utf-8') as db:
+        filename = r'C:\Users\Emmett\magi-spiders\data\ul_course_timetables.json'
+        with open(filename, 'w+') as db:
             dump(self.UL, db)
-            
+
+def TimeCheck(input):
+    try:
+        times = input.split('-')
+        start_time = times[0].strip()
+        end_time = times[1].strip()
+        strptime(start_time, '%H:%M')
+        strptime(end_time, '%H:%M')
+        return True
+    except ValueError:
+        return False
+    except IndexError:
+        return False
+
+def ProcessClassData(class_data, day):
+    new_class = {
+        'day': day,
+        'professor': 'Null',
+        'module': 'Null',
+        'group': 'Null',
+        'delivery': 'Null',
+        'location': 'Null',
+        'active_weeks': [],
+        'start_time': '00:00',
+        'end_time': '00:00'
+    }
+    #
+    times = class_data[0].split('-')
+    start_time = times[0].strip()
+    end_time = times[1].strip()
+    #
+    class_desc = class_data[1].split('-')
+    module = class_desc[0].strip()
+    delivery = class_desc[1].strip()
+    #
+    try:
+        group = class_desc[2].strip()
+        new_class['group'] = group
+    except IndexError as e:
+        pass
+    #
+    try:
+        professor = 'Unknown'
+        location = ''
+        if(len(class_data) < 5):
+            # data missing
+            unknown_data = class_data[-2].strip()
+            location = unknown_data
+            professor = unknown_data
+        else:
+            location = class_data[-2].strip()
+            professor = class_data[2].strip()
+        new_class['professor'] = professor
+        new_class['location'] = location
+    except IndexError as e:
+        pass
+    #
+    active_weeks = class_data[-1].replace('Wks:', '').strip()
+    active_weeks = active_weeks.split(',')
+    #
+    new_class['day'] = day
+    new_class['start_time'] = start_time
+    new_class['end_time'] = end_time
+    new_class['module'] = module
+    new_class['delivery'] = delivery
+    new_class['active_weeks'] = active_weeks
+    #           
+    return new_class
